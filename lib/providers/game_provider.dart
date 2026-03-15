@@ -5,6 +5,8 @@ import '../models/game_state.dart';
 import '../models/battle_result.dart';
 import '../models/hero_skill.dart';
 import '../widgets/game_grid.dart'; // For Direction
+import '../services/audio_service.dart';
+import '../services/save_service.dart';
 import 'battle_provider.dart';
 import 'dart:math';
 
@@ -14,6 +16,8 @@ class GameProvider extends ChangeNotifier {
   final Random _random = Random();
   int _nextId = 1;
   final BattleProvider _battleProvider = BattleProvider();
+  final AudioService _audio = AudioService();
+  final SaveService _save = SaveService();
 
   GameState get state => _state;
   int get score => _state.score;
@@ -26,7 +30,7 @@ class GameProvider extends ChangeNotifier {
   int get playerMaxHp => _state.playerMaxHp;
 
   /// 开始新游戏
-  void startNewGame([GameMode mode = GameMode.classic]) {
+  Future<void> startNewGame([GameMode mode = GameMode.classic]) async {
     _state = GameState.initial(mode);
     _addRandomTile();
     _addRandomTile();
@@ -35,6 +39,9 @@ class GameProvider extends ChangeNotifier {
     if (mode != GameMode.classic) {
       _spawnEnemiesForLevel(1);
     }
+    
+    // 播放开始音效
+    _audio.playSFX('start_game');
     
     notifyListeners();
   }
@@ -86,7 +93,7 @@ class GameProvider extends ChangeNotifier {
   }
 
   /// 处理滑动
-  void move(Direction direction) {
+  Future<void> move(Direction direction) async {
     if (_state.status != GameStatus.playing && _state.status != GameStatus.victory) return;
 
     final oldTiles = List<Tile>.from(_state.tiles);
@@ -94,6 +101,9 @@ class GameProvider extends ChangeNotifier {
     final moved = _moveTiles(direction);
 
     if (moved) {
+      // 播放滑动音效
+      _audio.playSlide();
+      
       _addRandomTile();
       
       // 战斗模式：检查碰撞和战斗
@@ -114,9 +124,15 @@ class GameProvider extends ChangeNotifier {
               gold: _state.gold + battleResult.goldEarned,
               score: _state.score + battleResult.damageDealt,
             );
+            // 播放胜利音效
+            _audio.playVictory();
           } else {
             _state = _state.copyWith(status: GameStatus.defeated);
+            // 播放失败音效
+            _audio.playDefeat();
           }
+          // 自动保存
+          await _autoSave();
         }
       }
       
@@ -129,8 +145,12 @@ class GameProvider extends ChangeNotifier {
       if (_state.mode == GameMode.classic) {
         if (_state.hasWon()) {
           _state = _state.copyWith(status: GameStatus.won);
+          _audio.playVictory();
+          await _autoSave();
         } else if (!_state.canMove()) {
           _state = _state.copyWith(status: GameStatus.lost);
+          _audio.playDefeat();
+          await _autoSave();
         }
       }
     } else {
@@ -173,6 +193,9 @@ class GameProvider extends ChangeNotifier {
           // 发生战斗
           final result = _battleProvider.calculateBattle(tile, enemy);
           totalDamage += result.damageDealt;
+          
+          // 播放战斗音效
+          _audio.playBattle();
           
           if (result.skillUsed.isNotEmpty) {
             skillLogs.addAll(result.skillUsed);
@@ -322,6 +345,9 @@ class GameProvider extends ChangeNotifier {
         tile.isMerged = true;
         _state.score += tile.value;
         
+        // 播放合并音效
+        _audio.playMerge(tile.value);
+        
         // 移除被合并的方块
         tiles.remove(mergeTarget);
         mergedIds.add(tile.id);
@@ -351,6 +377,42 @@ class GameProvider extends ChangeNotifier {
   void reset() {
     _state = GameState.initial();
     notifyListeners();
+  }
+
+  /// 自动保存游戏进度
+  Future<void> _autoSave() async {
+    final saveData = SaveData.fromGameState(_state);
+    await _save.save(saveData);
+  }
+
+  /// 读取存档并恢复
+  Future<bool> loadSave() async {
+    final saveData = await _save.load();
+    if (saveData == null) return false;
+
+    _state = GameState.initial(saveData.mode).copyWith(
+      score: saveData.score,
+      bestScore: saveData.bestScore,
+      gold: saveData.gold,
+      level: saveData.level,
+    );
+    
+    // 生成初始方块
+    _addRandomTile();
+    _addRandomTile();
+    
+    // 如果是战斗模式，生成敌人
+    if (saveData.mode != GameMode.classic) {
+      _spawnEnemiesForLevel(saveData.level);
+    }
+    
+    notifyListeners();
+    return true;
+  }
+
+  /// 检查是否有存档
+  Future<bool> hasSave() async {
+    return await _save.hasSave();
   }
 }
 

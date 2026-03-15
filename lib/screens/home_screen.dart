@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
 import '../models/game_state.dart';
+import '../services/audio_service.dart';
+import '../services/save_service.dart';
 import 'game_screen.dart';
 
 /// 主菜单界面
@@ -98,56 +100,86 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildMenuContent(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // 开始游戏按钮
-        _buildMenuButton(
-          context,
-          icon: Icons.play_arrow,
-          text: '开始冒险',
-          color: Colors.amber,
-          onTap: () => _startGame(context, GameMode.classic),
-        ),
+    return FutureBuilder<bool>(
+      future: Provider.of<GameProvider>(context, listen: false).hasSave(),
+      builder: (context, snapshot) {
+        final hasSave = snapshot.data ?? false;
         
-        const SizedBox(height: 16),
-        
-        // 剧情模式
-        _buildMenuButton(
-          context,
-          icon: Icons.menu_book,
-          text: '剧情模式',
-          color: Colors.purple,
-          onTap: () => _startGame(context, GameMode.story),
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // 无尽塔
-        _buildMenuButton(
-          context,
-          icon: Icons.auto_awesome,
-          text: '无尽塔',
-          color: Colors.red,
-          onTap: () => _startGame(context, GameMode.tower),
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // PVP 对战
-        _buildMenuButton(
-          context,
-          icon: Icons.swords,
-          text: 'PVP 对战',
-          color: Colors.orange,
-          onTap: () => _showComingSoon(context),
-        ),
-        
-        const SizedBox(height: 32),
-        
-        // 游戏说明
-        _buildInfoCard(),
-      ],
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 继续游戏按钮 (有存档时显示)
+            if (hasSave) ...[
+              _buildMenuButton(
+                context,
+                icon: Icons.play_circle_outline,
+                text: '继续冒险',
+                color: Colors.green,
+                onTap: () => _continueGame(context),
+              ),
+              const SizedBox(height: 16),
+            ],
+            
+            // 开始游戏按钮
+            _buildMenuButton(
+              context,
+              icon: Icons.play_arrow,
+              text: '开始冒险',
+              color: Colors.amber,
+              onTap: () => _startGame(context, GameMode.classic),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 剧情模式
+            _buildMenuButton(
+              context,
+              icon: Icons.menu_book,
+              text: '剧情模式',
+              color: Colors.purple,
+              onTap: () => _startGame(context, GameMode.story),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 无尽塔
+            _buildMenuButton(
+              context,
+              icon: Icons.auto_awesome,
+              text: '无尽塔',
+              color: Colors.red,
+              onTap: () => _startGame(context, GameMode.tower),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // PVP 对战
+            _buildMenuButton(
+              context,
+              icon: Icons.swords,
+              text: 'PVP 对战',
+              color: Colors.orange,
+              onTap: () => _showComingSoon(context),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // 设置按钮
+            _buildMenuButton(
+              context,
+              icon: Icons.settings,
+              text: '设置',
+              color: Colors.blueGrey,
+              onTap: () => _showSettings(context),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // 游戏说明
+            _buildInfoCard(),
+          ],
+        );
+      },
     );
   }
 
@@ -289,9 +321,9 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _startGame(BuildContext context, GameMode mode) {
+  Future<void> _startGame(BuildContext context, GameMode mode) async {
     final provider = Provider.of<GameProvider>(context, listen: false);
-    provider.startNewGame(mode);
+    await provider.startNewGame(mode);
     
     Navigator.push(
       context,
@@ -299,6 +331,23 @@ class HomeScreen extends StatelessWidget {
         builder: (context) => const GameScreen(),
       ),
     );
+  }
+
+  Future<void> _continueGame(BuildContext context) async {
+    final provider = Provider.of<GameProvider>(context, listen: false);
+    final hasSave = await provider.hasSave();
+    
+    if (hasSave) {
+      final loaded = await provider.loadSave();
+      if (loaded) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const GameScreen(),
+          ),
+        );
+      }
+    }
   }
 
   void _showComingSoon(BuildContext context) {
@@ -325,6 +374,44 @@ class HomeScreen extends StatelessWidget {
               '好的',
               style: TextStyle(color: Colors.amber),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSettings(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.deepPurple.shade900,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.amber, width: 2),
+        ),
+        title: const Text(
+          '⚙️ 设置',
+          style: TextStyle(color: Colors.amber),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              leading: Icon(Icons.volume_up, color: Colors.amber),
+              title: Text('BGM 音量', style: TextStyle(color: Colors.white)),
+            ),
+            Slider(value: 0.5, onChanged: (v) {}),
+            const ListTile(
+              leading: Icon(Icons.graphic_eq, color: Colors.amber),
+              title: Text('音效音量', style: TextStyle(color: Colors.white)),
+            ),
+            Slider(value: 0.7, onChanged: (v) {}),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭', style: TextStyle(color: Colors.amber)),
           ),
         ],
       ),
