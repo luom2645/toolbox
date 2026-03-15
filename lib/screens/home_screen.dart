@@ -5,6 +5,7 @@ import '../models/game_state.dart';
 import '../services/audio_service.dart';
 import '../services/save_service.dart';
 import 'game_screen.dart';
+import 'settings_screen.dart';
 
 /// 主菜单界面
 class HomeScreen extends StatelessWidget {
@@ -381,39 +382,10 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _showSettings(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.deepPurple.shade900,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.amber, width: 2),
-        ),
-        title: const Text(
-          '⚙️ 设置',
-          style: TextStyle(color: Colors.amber),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ListTile(
-              leading: Icon(Icons.volume_up, color: Colors.amber),
-              title: Text('BGM 音量', style: TextStyle(color: Colors.white)),
-            ),
-            Slider(value: 0.5, onChanged: (v) {}),
-            const ListTile(
-              leading: Icon(Icons.graphic_eq, color: Colors.amber),
-              title: Text('音效音量', style: TextStyle(color: Colors.white)),
-            ),
-            Slider(value: 0.7, onChanged: (v) {}),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭', style: TextStyle(color: Colors.amber)),
-          ),
-        ],
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SettingsScreen(),
       ),
     );
   }
