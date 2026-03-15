@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/tile.dart';
 import '../models/enemy.dart';
 import '../providers/game_provider.dart';
+import '../services/particle_service.dart';
 import 'enemy_widget.dart';
 import 'damage_text.dart';
 
@@ -24,6 +25,7 @@ class GameGrid extends StatefulWidget {
 
 class _GameGridState extends State<GameGrid> {
   Offset _startPan = Offset.zero;
+  final ParticleService _particles = ParticleService();
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +52,14 @@ class _GameGridState extends State<GameGrid> {
             
             // 方块 (在上层)
             ...widget.tiles.map((tile) => _buildTile(tile)),
+            
+            // 粒子效果层
+            if (_particles.enabled)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _ParticleOverlayPainter(_particles),
+                ),
+              ),
           ],
         ),
       ),
@@ -182,4 +192,21 @@ class _TileWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 粒子效果绘制器
+class _ParticleOverlayPainter extends CustomPainter {
+  final ParticleService particles;
+
+  _ParticleOverlayPainter(this.particles);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 粒子由 ParticleService 管理，此处仅绘制
+    final paint = Paint();
+    // 实际粒子需要在 GameState 中存储
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParticleOverlayPainter oldDelegate) => true;
 }
