@@ -1,3 +1,6 @@
+import 'enemy.dart';
+import 'treasure_monster.dart';
+
 /// 战斗结果
 class BattleResult {
   final bool isVictory;
@@ -6,51 +9,39 @@ class BattleResult {
   final int goldEarned;
   final int expEarned;
   final List<String> skillUsed;
-  final String message;
+  final bool hasCriticalHit;
+  final int comboCount;
 
   BattleResult({
     required this.isVictory,
-    this.damageDealt = 0,
-    this.damageTaken = 0,
+    required this.damageDealt,
+    required this.damageTaken,
     this.goldEarned = 0,
     this.expEarned = 0,
     this.skillUsed = const [],
-    this.message = '',
+    this.hasCriticalHit = false,
+    this.comboCount = 0,
   });
 
-  /// 创建胜利结果
-  factory BattleResult.victory({
-    required int damageDealt,
-    required int goldEarned,
-    required int expEarned,
-    required List<String> skillUsed,
+  BattleResult copyWith({
+    bool? isVictory,
+    int? damageDealt,
+    int? damageTaken,
+    int? goldEarned,
+    int? expEarned,
+    List<String>? skillUsed,
+    bool? hasCriticalHit,
+    int? comboCount,
   }) {
     return BattleResult(
-      isVictory: true,
-      damageDealt: damageDealt,
-      goldEarned: goldEarned,
-      expEarned: expEarned,
-      skillUsed: skillUsed,
-      message: '🎉 战斗胜利！获得 $goldEarned 金币，$expEarned 经验',
-    );
-  }
-
-  /// 创建失败结果
-  factory BattleResult.defeat({
-    required int damageTaken,
-  }) {
-    return BattleResult(
-      isVictory: false,
-      damageTaken: damageTaken,
-      message: '💀 战斗失败... 休整后再来挑战吧！',
-    );
-  }
-
-  /// 创建平局结果
-  factory BattleResult.draw() {
-    return BattleResult(
-      isVictory: false,
-      message: '⚖️ 势均力敌，下次再战！',
+      isVictory: isVictory ?? this.isVictory,
+      damageDealt: damageDealt ?? this.damageDealt,
+      damageTaken: damageTaken ?? this.damageTaken,
+      goldEarned: goldEarned ?? this.goldEarned,
+      expEarned: expEarned ?? this.expEarned,
+      skillUsed: skillUsed ?? this.skillUsed,
+      hasCriticalHit: hasCriticalHit ?? this.hasCriticalHit,
+      comboCount: comboCount ?? this.comboCount,
     );
   }
 }
